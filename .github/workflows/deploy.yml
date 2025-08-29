@@ -1,0 +1,108 @@
+name: Deploy URL Shortener
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write         # REQUIRED for GitHub OIDC -> AWS
+  contents: read          # allows checkout
+
+env:
+  AWS_REGION: us-east-1                         # keep consistent with your setup
+  ARTIFACT_BUCKET: ddemo-artifacts-676206911400-us-east-1  #Will later want account id to be a secret.  Probably good to add for security section
+  ARTIFACT_KEY: releases/current.zip
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+    #   # Optional: sanity check your repo structure
+    #   - name: List tree
+    #     run: |
+    #       ls -la
+    #       ls -la app || true
+    #       ls -la infra || true
+
+      # Package the app
+      - name: Zip /app folder as release artifact
+        run: |
+          mkdir -p build
+          (cd app && zip -r ../build/app.zip .)
+          ls -lh build
+
+      # Configure AWS credentials via OIDC (no long-lived keys)
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::676206911400:role/GitHubActionsDeployRole  # <-- replace ACCOUNT_ID and role name if different
+          aws-region: ${{ env.AWS_REGION }}
+
+    #   # Optional: quick sanity test to confirm we assumed the role
+    #   - name: Sanity: whoami
+    #     run: aws sts get-caller-identity
+
+      # Upload the artifact to S3
+      - name: Upload artifact to S3
+        run: |
+          aws s3 cp build/app.zip "s3://${ARTIFACT_BUCKET}/${ARTIFACT_KEY}" --acl private
+
+      # Terraform to provision/update infra in ./infra
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init/Plan/Apply
+        working-directory: infra
+        run: |
+          terraform init -input=false
+          terraform plan -input=false \
+            -var="region=${{ env.AWS_REGION }}" \
+            -var="artifact_bucket=${{ env.ARTIFACT_BUCKET }}" \
+            -var="artifact_key=${{ env.ARTIFACT_KEY }}"
+          terraform apply -auto-approve -input=false \
+            -var="region=${{ env.AWS_REGION }}" \
+            -var="artifact_bucket=${{ env.ARTIFACT_BUCKET }}" \
+            -var="artifact_key=${{ env.ARTIFACT_KEY }}"
+
+      # Read instance ID & public DNS from Terraform outputs
+      - name: Read Terraform outputs
+        id: tf
+        working-directory: infra
+        run: |
+          echo "INSTANCE_ID=$(terraform output -raw instance_id)" >> $GITHUB_OUTPUT
+          echo "PUBLIC_DNS=$(terraform output -raw public_dns)" >> $GITHUB_OUTPUT
+
+      # Trigger deploy script on the instance via SSM Run Command
+      - name: Trigger deploy via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids "${{ steps.tf.outputs.INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "DDemo deploy" \
+            --parameters commands=["/usr/local/bin/deploy.sh s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_KEY }}"] \
+            --output text
+
+      # (Optional but nice) Wait for app to be healthy
+      - name: Wait for /healthz
+        run: |
+          set -e
+          URL="http://${{ steps.tf.outputs.PUBLIC_DNS }}/healthz"
+          echo "Waiting for $URL ..."
+          for i in {1..30}; do
+            if curl -sSf "$URL" > /dev/null; then
+              echo "OK!"
+              exit 0
+            fi
+            echo "not ready yet... ($i)"
+            sleep 5
+          done
+          echo "App did not become healthy in time."
+          exit 1
+
+      - name: Echo site URL
+        run: echo "Site == http://${{ steps.tf.outputs.PUBLIC_DNS }}"

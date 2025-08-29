@@ -2,3 +2,4 @@ venv/
 app/wipe_db.py
 app/urls.db
 app/__pycache__
+./.github/workflows/whoami.yml
