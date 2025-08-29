@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title or "URL Shortener" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+  <header class="header">
+    <h1>URL Shortener</h1>
+    <div class="stamp">Deployed at: {{ deployed_at }}</div>
+  </header>
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">
+    <small>Demo app (Flask + SQLite)</small>
+  </footer>
+</body>
+</html>

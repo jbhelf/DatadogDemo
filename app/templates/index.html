@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Create a short link</h2>
+  <form method="post" action="/shorten">
+    <label for="url">Long URL</label>
+    <input id="url" name="url" type="url" placeholder="https://example.com/some/long/path" required>
+    <button type="submit">Shorten</button>
+  </form>
+  {% if short_url %}
+    <div class="result">
+      <strong>Your short link:</strong>
+      <a href="{{ short_url }}" target="_blank" rel="noopener">{{ short_url }}</a>
+    </div>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Recent links</h3>
+  {% if rows %}
+    <ul class="list">
+      {% for r in rows %}
+        <li><code>{{ request.host_url }}{{ r.code }}</code> → {{ r.url }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No links yet—create one above.</p>
+  {% endif %}
+</section>
+{% endblock %}
