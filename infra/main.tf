@@ -3,6 +3,13 @@ terraform {
   required_providers {
     aws = { source = "hashicorp/aws", version = "~> 5.0" }
   }
+  backend "s3" {
+  bucket         = "ddemo-tfstate-676206911400-us-east-1"
+  key            = "infra/terraform.tfstate"
+  region         = "us-east-1"
+  dynamodb_table = "ddemo-tf-lock"
+  encrypt        = true
+}
 }
 
 provider "aws" {
@@ -42,66 +49,70 @@ resource "aws_security_group" "web_sg" {
   tags = { Name = "ddemo-web-sg" }
 }
 
-# IAM role for EC2 to read from S3 and use SSM
-resource "aws_iam_role" "ec2_role" {
-  name = "ddemo-ec2-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = { Service = "ec2.amazonaws.com" },
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
+# # IAM role for EC2 to read from S3 and use SSM
+# resource "aws_iam_role" "ec2_role" {
+#   name = "ddemo-ec2-role"
+#   assume_role_policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [{
+#       Effect = "Allow",
+#       Principal = { Service = "ec2.amazonaws.com" },
+#       Action = "sts:AssumeRole"
+#     }]
+#   })
+# }
 
-# Instance permissions: S3 read to your artifact bucket + SSM basics
-resource "aws_iam_policy" "ec2_policy" {
-  name   = "ddemo-ec2-s3-ssm"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = ["s3:GetObject","s3:ListBucket"],
-        Resource = [
-          "arn:aws:s3:::${var.artifact_bucket}",
-          "arn:aws:s3:::${var.artifact_bucket}/*"
-        ]
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "ssm:DescribeAssociation",
-          "ssm:GetDeployablePatchSnapshotForInstance",
-          "ssm:GetDocument",
-          "ssm:DescribeDocument",
-          "ssm:GetManifest",
-          "ssm:ListAssociations",
-          "ssm:ListInstanceAssociations",
-          "ssm:PutInventory",
-          "ssm:PutComplianceItems",
-          "ssm:PutConfigurePackageResult",
-          "ssm:UpdateAssociationStatus",
-          "ssm:UpdateInstanceAssociationStatus",
-          "ssm:UpdateInstanceInformation",
-          "ssmmessages:*",
-          "ec2messages:*"
-        ],
-        Resource = "*"
-      }
-    ]
-  })
-}
+# # Instance permissions: S3 read to your artifact bucket + SSM basics
+# resource "aws_iam_policy" "ec2_policy" {
+#   name   = "ddemo-ec2-s3-ssm"
+#   policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [
+#       {
+#         Effect = "Allow",
+#         Action = ["s3:GetObject","s3:ListBucket"],
+#         Resource = [
+#           "arn:aws:s3:::${var.artifact_bucket}",
+#           "arn:aws:s3:::${var.artifact_bucket}/*"
+#         ]
+#       },
+#       {
+#         Effect = "Allow",
+#         Action = [
+#           "ssm:DescribeAssociation",
+#           "ssm:GetDeployablePatchSnapshotForInstance",
+#           "ssm:GetDocument",
+#           "ssm:DescribeDocument",
+#           "ssm:GetManifest",
+#           "ssm:ListAssociations",
+#           "ssm:ListInstanceAssociations",
+#           "ssm:PutInventory",
+#           "ssm:PutComplianceItems",
+#           "ssm:PutConfigurePackageResult",
+#           "ssm:UpdateAssociationStatus",
+#           "ssm:UpdateInstanceAssociationStatus",
+#           "ssm:UpdateInstanceInformation",
+#           "ssmmessages:*",
+#           "ec2messages:*"
+#         ],
+#         Resource = "*"
+#       }
+#     ]
+#   })
+# }
 
-resource "aws_iam_role_policy_attachment" "attach" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = aws_iam_policy.ec2_policy.arn
-}
+# resource "aws_iam_role_policy_attachment" "attach" {
+#   role       = aws_iam_role.ec2_role.name
+#   policy_arn = aws_iam_policy.ec2_policy.arn
+# }
 
-resource "aws_iam_instance_profile" "ec2_profile" {
+# resource "aws_iam_instance_profile" "ec2_profile" {
+#   name = "ddemo-ec2-profile"
+#   role = aws_iam_role.ec2_role.name
+# }
+
+data "aws_iam_instance_profile" "ec2_profile" {
   name = "ddemo-ec2-profile"
-  role = aws_iam_role.ec2_role.name
 }
 
 # Latest Amazon Linux 2023 (x86_64)
@@ -130,7 +141,8 @@ resource "aws_instance" "web" {
   instance_type          = "t2.micro"
   subnet_id              = data.aws_subnets.default.ids[0]
   vpc_security_group_ids = [aws_security_group.web_sg.id]
-  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
+  iam_instance_profile   = data.aws_iam_instance_profile.ec2_profile.name
+
 
   user_data = <<-EOF
     #!/bin/bash
