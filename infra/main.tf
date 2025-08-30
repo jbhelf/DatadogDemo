@@ -142,10 +142,13 @@ resource "aws_instance" "web" {
   subnet_id              = data.aws_subnets.default.ids[0]
   vpc_security_group_ids = [aws_security_group.web_sg.id]
   iam_instance_profile   = data.aws_iam_instance_profile.ec2_profile.name
-
+  user_data_replace_on_change = true
 
   user_data = <<-EOF
     #!/bin/bash
+    dnf install -y amazon-ssm-agent
+    systemctl enable amazon-ssm-agent
+    systemctl start amazon-ssm-agent
     set -euo pipefail
 
     dnf update -y
