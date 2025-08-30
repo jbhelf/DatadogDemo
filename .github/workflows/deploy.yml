@@ -51,7 +51,11 @@ jobs:
       - name: Upload artifact to S3
         run: |
           aws s3 cp build/app.zip "s3://${ARTIFACT_BUCKET}/${ARTIFACT_KEY}" --acl private
-
+      
+      #One-off to verify we can read instance profile (debugging for policy-based issues)
+      - name: Can read instance profile?
+        run: aws iam get-instance-profile --instance-profile-name ddemo-ec2-profile
+      
       # Terraform to provision/update infra in ./infra
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
