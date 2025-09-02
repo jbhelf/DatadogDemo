@@ -10,10 +10,8 @@
   {% if short_url %}
   <div class="result">
     <p>Short link:</p>
-  
-    <!-- BUG is controlled in Python via BUG_REDIRECT -->
     <p>
-      <a class="short-link" href="{{ short_href or short_url }}" target="_blank" rel="noopener">
+      <a class="short-link" href="{{ short_href }}" target="_blank" rel="noopener">
         {{ short_url }}
       </a>
     </p>
