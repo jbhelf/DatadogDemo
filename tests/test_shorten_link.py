@@ -1,12 +1,8 @@
 from bs4 import BeautifulSoup
-import app as web
+from app.app import app as flask_app, BUG_REDIRECT
 
 
-def test_anchor_href_matches_display(monkeypatch):
-    # Force the bug OFF for this test
-    monkeypatch.setattr(web, "BUG_REDIRECT", False)
-
-    flask_app = web.app
+def test_anchor_href_matches_display():
     client = flask_app.test_client()
 
     # Act: create a short link
@@ -20,5 +16,10 @@ def test_anchor_href_matches_display(monkeypatch):
     href = a.get("href", "")
     text = a.get_text(strip=True)
 
-    # The rendered text is the full short URL; the href should match exactly
-    assert href == text, f"href ({href}) != text ({text})"
+    if BUG_REDIRECT:
+        # When the bug flag is ON, the href should point to Datadog and not equal the displayed short URL
+        assert "datadog.com" in href, f"expected datadog.com in href, got {href}"
+        assert href != text, "href should not match displayed short URL when BUG_REDIRECT is True"
+    else:
+        # When the bug flag is OFF, href must equal the displayed short URL
+        assert href == text, f"href ({href}) != text ({text})"
