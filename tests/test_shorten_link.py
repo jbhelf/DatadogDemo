@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import app.app as web  # your Flask app module is app/app.py
 
+
 def test_anchor_href_matches_display(monkeypatch):
     # Force the bug OFF for this test
     monkeypatch.setattr(web, "BUG_REDIRECT", False)

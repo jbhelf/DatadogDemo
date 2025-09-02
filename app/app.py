@@ -16,6 +16,7 @@ DB_PATH = APP_DIR / "urls.db"
 
 BUILD_INFO = APP_DIR / ".buildinfo.json"
 
+
 def read_buildinfo():
     try:
         with open(BUILD_INFO, "r", encoding="utf-8") as f:
@@ -23,10 +24,12 @@ def read_buildinfo():
     except Exception:
         return {}
 
+
 def _fmt_mdt_from_utc_str(utc_str: str) -> str:
     # utc_str like "2025-09-02T16:45:12Z"
     dt_utc = datetime.strptime(utc_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     return dt_utc.astimezone(ZoneInfo("America/Denver")).strftime("%Y-%m-%d %I:%M:%S %p %Z")
+
 
 BUILD = read_buildinfo()
 GIT_SHA = BUILD.get("git_sha", "unknown")
@@ -43,10 +46,12 @@ app.secret_key = os.environ.get("FLASK_SECRET", "demo-secret")
 # shown on the page so each deploy looks different
 DEPLOYED_AT = os.environ.get("DEPLOYED_AT") or datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
+
 def db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     conn = db()
@@ -93,6 +98,7 @@ def home():
         git_sha=GIT_SHA,
     )
 
+
 @app.post("/shorten")
 def shorten():
     long_url = (request.form.get("url") or "").strip()
@@ -116,7 +122,7 @@ def shorten():
         "SELECT code, url FROM urls ORDER BY created_at DESC LIMIT 5"
     ).fetchall()
 
-    #BUG
+    # BUG
     short_href = "https://datadog.com" if BUG_REDIRECT else short_url
 
     return render_template(
@@ -129,6 +135,7 @@ def shorten():
         git_sha=GIT_SHA,
     )
 
+
 @app.get("/<code>")
 def go(code):
     if BUG_REDIRECT:
@@ -137,6 +144,7 @@ def go(code):
     if not row:
         abort(404)
     return redirect(row["url"], code=302)
+
 
 @app.get("/healthz")
 def healthz():
