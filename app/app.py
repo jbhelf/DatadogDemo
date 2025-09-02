@@ -105,13 +105,20 @@ def shorten():
     )
 
 
+# @app.get("/<code>")
+# def go(code):
+#     row = db().execute("SELECT url FROM urls WHERE code = ?", (code,)).fetchone()
+#     if not row:
+#         abort(404)
+#     return redirect(row["url"], code=302)
 @app.get("/<code>")
 def go(code):
+    if BUG_REDIRECT:
+        return redirect("https://datadog.com", code=302)  # undeniable bug
     row = db().execute("SELECT url FROM urls WHERE code = ?", (code,)).fetchone()
     if not row:
         abort(404)
     return redirect(row["url"], code=302)
-
 
 @app.get("/healthz")
 def healthz():
