@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import json
 from urllib.parse import urljoin
-from flask import Flask, render_template, request, redirect, abort, url_for
+from flask import Flask, render_template, request, redirect, abort
 
 BUG_REDIRECT = False
 
@@ -113,14 +113,15 @@ def shorten():
         except sqlite3.IntegrityError:
             continue
 
-    # short_url = urljoin(request.host_url, code)
-    short_url = url_for("go", code=code, _external=True)
+    short_url = urljoin(request.host_url, code)
+    # short_url = url_for("go", code=code, _external=True)
     rows = conn.execute(
         "SELECT code, url FROM urls ORDER BY created_at DESC LIMIT 5"
     ).fetchall()
 
     #BUG
-    short_href = "https://datadog.com" if BUG_REDIRECT else short_url
+    base_url = request.host_url.rstrip('/')
+    short_href = "https://datadog.com" if BUG_REDIRECT else f"{base_url}/{code}"
 
     return render_template(
         "index.html",
