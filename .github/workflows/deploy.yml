@@ -181,25 +181,22 @@ jobs:
 
       - name: Emit pipeline success metric
         if: success()
-        env:
-          DD_SITE: ${{ secrets.DD_SITE }}
         run: |
           set -euo pipefail
           TS=$(date +%s)
           HOST="${{ secrets.DD_SITE }}"
-          # Normalize site and build API host (accepts us5.datadog.com or us5.datadoghq.com)
+          # Normalize site (allow us5.datadog.com) -> us5.datadoghq.com
           if [[ "$HOST" == *"datadog.com" ]] && [[ "$HOST" != *"datadoghq.com" ]]; then
             HOST="${HOST/datadog.com/datadoghq.com}"
           fi
           API_HOST="api.${HOST}"
 
-          # Build v2 metrics intake payload (points are objects with timestamp/value)
+          # v2 series payload (omit type to avoid enum parsing issues)
           PAYLOAD=$(cat <<'JSON'
           {
             "series": [
               {
                 "metric": "ddemo.pipeline.status",
-                "type": "gauge",
                 "points": [
                   { "timestamp": __TS__, "value": 1 }
                 ],
@@ -225,8 +222,6 @@ jobs:
 
       - name: Emit pipeline duration metric (seconds)
         if: always()
-        env:
-          DD_SITE: ${{ secrets.DD_SITE }}
         run: |
           set -euo pipefail
           END=$(date +%s)
@@ -244,7 +239,6 @@ jobs:
             "series": [
               {
                 "metric": "ddemo.pipeline.deploy_duration_s",
-                "type": "gauge",
                 "points": [
                   { "timestamp": __TS__, "value": __VAL__ }
                 ],
@@ -269,12 +263,39 @@ jobs:
             -H "DD-API-KEY: ${{ secrets.DD_API_KEY }}" \
             -d "$PAYLOAD"
 
-      - name: Install Datadog CI (for events)
-        run: npm -g install @datadog/datadog-ci
-
       - name: Create Datadog event
+        env:
+          DD_SITE: ${{ secrets.DD_SITE }}
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+          DD_APP_KEY: ${{ secrets.DD_APP_KEY }}
         run: |
-          datadog-ci event create \
-            --title "Deploy succeeded" \
-            --text "Workflow ${{ github.workflow }} run #${{ github.run_number }} deployed ${{ github.sha }}" \
-            --tags workflow:${{ github.workflow }},branch:${{ github.ref_name }},service:${{ env.DD_SERVICE }},env:${{ env.DD_ENV }}
+          set -euo pipefail
+          if [[ -z "${DD_APP_KEY:-}" ]]; then
+            echo "DD_APP_KEY secret is required for Events v2" >&2
+            exit 1
+          fi
+          HOST="$DD_SITE"
+          if [[ "$HOST" == *"datadog.com" ]] && [[ "$HOST" != *"datadoghq.com" ]]; then
+            HOST="${HOST/datadog.com/datadoghq.com}"
+          fi
+          API_HOST="api.${HOST}"
+
+          TITLE="Deploy succeeded"
+          TEXT="Workflow ${{ github.workflow }} run #${{ github.run_number }} deployed ${{ github.sha }}"
+          TAGS="workflow:${{ github.workflow }},branch:${{ github.ref_name }},service:${{ env.DD_SERVICE }},env:${{ env.DD_ENV }}"
+
+          EVENT_PAYLOAD=$(cat <<JSON
+          {
+            "title": "${TITLE}",
+            "text": "${TEXT}",
+            "tags": [$(printf '"%s",' ${TAGS//,/ } | sed 's/,$//')],
+            "source": "github_actions"
+          }
+          JSON
+          )
+
+          curl -sS -X POST "https://${API_HOST}/api/v2/events" \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${DD_API_KEY}" \
+            -H "DD-APPLICATION-KEY: ${DD_APP_KEY}" \
+            -d "${EVENT_PAYLOAD}"
