@@ -186,20 +186,23 @@ jobs:
         run: |
           set -euo pipefail
           TS=$(date +%s)
-          HOST="$DD_SITE"
-          if [[ "$HOST" == api.* ]]; then
-            API_HOST="$HOST"
-          else
-            API_HOST="${HOST/datadoghq./api.datadoghq.}"
+          HOST="${{ secrets.DD_SITE }}"
+          # Normalize site and build API host (accepts us5.datadog.com or us5.datadoghq.com)
+          if [[ "$HOST" == *"datadog.com" ]] && [[ "$HOST" != *"datadoghq.com" ]]; then
+            HOST="${HOST/datadog.com/datadoghq.com}"
           fi
-          # Build payload with a literal placeholder then replace with TS to avoid YAML/JSON quoting issues
+          API_HOST="api.${HOST}"
+
+          # Build v2 metrics intake payload (points are objects with timestamp/value)
           PAYLOAD=$(cat <<'JSON'
           {
             "series": [
               {
                 "metric": "ddemo.pipeline.status",
-                "type": 3,
-                "points": [[__TS__, 1]],
+                "type": "gauge",
+                "points": [
+                  { "timestamp": __TS__, "value": 1 }
+                ],
                 "tags": [
                   "workflow:${{ github.workflow }}",
                   "job:${{ github.job }}",
@@ -214,6 +217,7 @@ jobs:
           JSON
           )
           PAYLOAD=${PAYLOAD/__TS__/$TS}
+
           curl -sS -X POST "https://${API_HOST}/api/v2/series" \
             -H "Content-Type: application/json" \
             -H "DD-API-KEY: ${{ secrets.DD_API_KEY }}" \
@@ -228,19 +232,22 @@ jobs:
           END=$(date +%s)
           START=${{ steps.t0.outputs.START_TS }}
           DURATION=$(( END - START ))
-          HOST="$DD_SITE"
-          if [[ "$HOST" == api.* ]]; then
-            API_HOST="$HOST"
-          else
-            API_HOST="${HOST/datadoghq./api.datadoghq.}"
+
+          HOST="${{ secrets.DD_SITE }}"
+          if [[ "$HOST" == *"datadog.com" ]] && [[ "$HOST" != *"datadoghq.com" ]]; then
+            HOST="${HOST/datadog.com/datadoghq.com}"
           fi
+          API_HOST="api.${HOST}"
+
           PAYLOAD=$(cat <<'JSON'
           {
             "series": [
               {
                 "metric": "ddemo.pipeline.deploy_duration_s",
-                "type": 3,
-                "points": [[__TS__, __VAL__]],
+                "type": "gauge",
+                "points": [
+                  { "timestamp": __TS__, "value": __VAL__ }
+                ],
                 "tags": [
                   "workflow:${{ github.workflow }}",
                   "job:${{ github.job }}",
@@ -256,10 +263,14 @@ jobs:
           )
           PAYLOAD=${PAYLOAD/__TS__/$END}
           PAYLOAD=${PAYLOAD/__VAL__/$DURATION}
+
           curl -sS -X POST "https://${API_HOST}/api/v2/series" \
             -H "Content-Type: application/json" \
             -H "DD-API-KEY: ${{ secrets.DD_API_KEY }}" \
             -d "$PAYLOAD"
+
+      - name: Install Datadog CI (for events)
+        run: npm -g install @datadog/datadog-ci
 
       - name: Create Datadog event
         run: |
