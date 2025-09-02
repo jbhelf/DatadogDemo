@@ -17,7 +17,7 @@ def test_anchor_href_matches_display():
     text = a.get_text(strip=True)
 
     if BUG_REDIRECT:
-        # When the bug flag is ON, the href should point 
+        # When the bug flag is ON, the href should point
         # to Datadog and not equal the displayed short URL
         assert "datadog.com" in href, f"expected datadog.com in href, got {href}"
         assert href != text, "href should not match displayed short URL when BUG_REDIRECT is True"
