@@ -154,6 +154,9 @@ resource "aws_instance" "web" {
     dnf update -y
     dnf install -y python3 unzip awscli
 
+    timedatectl set-timezone America/Denver || true
+    timedatectl status || true
+
     mkdir -p ${local.app_dir}
     python3 -m venv ${local.app_dir}/venv
 
@@ -186,7 +189,7 @@ resource "aws_instance" "web" {
 
     [Service]
     WorkingDirectory=${local.app_dir}
-    Environment=DEPLOYED_AT=$(date +"%Y-%m-%d %I:%M:%S %p %Z")
+    Environment="DEPLOYED_AT=$(date +"%Y-%m-%d %I:%M:%S %p %Z")"
     ExecStart=${local.app_dir}/venv/bin/python -m flask --app app/app.py run --host 0.0.0.0 --port 80
     Restart=on-failure
     User=root
