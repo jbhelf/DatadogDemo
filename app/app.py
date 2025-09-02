@@ -9,6 +9,7 @@ from flask import Flask, render_template, request, redirect, abort
 
 APP_DIR = Path(__file__).parent
 DB_PATH = APP_DIR / "urls.db"
+BUG_REDIRECT = True
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "demo-secret")
@@ -55,22 +56,27 @@ def _init():
 
 @app.get("/")
 def home():
-    # show form + last few links
     rows = db().execute(
         "SELECT code, url FROM urls ORDER BY created_at DESC LIMIT 5"
     ).fetchall()
-    return render_template("index.html", deployed_at=DEPLOYED_AT, rows=rows, short_url=None, short_code=None)
+    return render_template(
+        "index.html",
+        deployed_at=DEPLOYED_AT,
+        rows=rows,
+        short_url=None,
+        short_code=None,
+        short_href=None,   # added
+    )
 
 
 @app.post("/shorten")
 def shorten():
     long_url = (request.form.get("url") or "").strip()
     if not long_url:
-        return redirect("/")  # nothing entered
+        return redirect("/")
 
     long_url = ensure_scheme(long_url)
 
-    # generate a unique short code
     conn = db()
     while True:
         code = gen_code()
@@ -79,13 +85,24 @@ def shorten():
             conn.commit()
             break
         except sqlite3.IntegrityError:
-            continue  # collision; try another code
+            continue
 
-    short_url = urljoin(request.host_url, code)  # absolute URL to show the user
+    short_url = urljoin(request.host_url, code)
     rows = conn.execute(
         "SELECT code, url FROM urls ORDER BY created_at DESC LIMIT 5"
     ).fetchall()
-    return render_template("index.html", deployed_at=DEPLOYED_AT, rows=rows, short_url=short_url, short_code=code)
+
+    #BUG
+    short_href = "https://datadog.com" if BUG_REDIRECT else short_url
+
+    return render_template(
+        "index.html",
+        deployed_at=DEPLOYED_AT,
+        rows=rows,
+        short_url=short_url,
+        short_code=code,
+        short_href=short_href,   # added
+    )
 
 
 @app.get("/<code>")

@@ -10,22 +10,14 @@
   {% if short_url %}
   <div class="result">
     <p>Short link:</p>
-    <!-- ===== BUG ===== -->
+  
+    <!-- BUG is controlled in Python via BUG_REDIRECT -->
     <p>
-      <a id="short-link" href="https://datadog.com" target="_blank">
-        {{ request.url_root.rstrip('/') }}/r/{{ short_code }}
+      <a class="short-link" href="{{ short_href or short_url }}" target="_blank" rel="noopener">
+        {{ short_url }}
       </a>
     </p>
-    <!-- ===== END BUG ===== -->
-
-    <!-- ===== FIX (uncomment this, and comment the BUG above, to fix) =====
-    <p>
-      <a id="short-link" href="{{ request.url_root.rstrip('/') }}/r/{{ short_code }}" target="_blank">
-        {{ request.url_root.rstrip('/') }}/r/{{ short_code }}
-      </a>
-    </p>
-    ===== END FIX ===== -->
-
+  
     <small class="muted">Deployed at: {{ deployed_at }}</small>
   </div>
 {% endif %}
