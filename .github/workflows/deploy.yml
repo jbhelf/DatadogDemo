@@ -22,12 +22,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-    #   # Optional: sanity check your repo structure
-    #   - name: List tree
-    #     run: |
-    #       ls -la
-    #       ls -la app || true
-    #       ls -la infra || true
+      - name: Write build info (UTC timestamp + commit)
+        run: |
+          ts_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")   # ISO-8601 UTC
+          sha="${GITHUB_SHA:-local}"
+          mkdir -p app
+          cat > app/.buildinfo.json <<EOF
+          {
+            "deployed_at_utc": "${ts_utc}",
+            "git_sha": "${sha}"
+          }
+          EOF
 
       # Package the app
       - name: Zip /app folder as release artifact
@@ -42,10 +47,6 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::676206911400:role/GitHubActionsDeployRole  # <-- replace ACCOUNT_ID and role name if different
           aws-region: ${{ env.AWS_REGION }}
-
-    #   # Optional: quick sanity test to confirm we assumed the role
-    #   - name: Sanity: whoami
-    #     run: aws sts get-caller-identity
 
       # Upload the artifact to S3
       - name: Upload artifact to S3
@@ -83,25 +84,6 @@ jobs:
       - name: Wait for EC2 status checks to pass
         run: |
             aws ec2 wait instance-status-ok --instance-ids "${{ steps.tf_out.outputs.INSTANCE_ID }}"
-    
-    #   - name: Wait for SSM registration
-    #     run: |
-    #         set -euo pipefail
-    #         IID="${{ steps.tf_out.outputs.INSTANCE_ID }}"
-    #         echo "Waiting for SSM to see $IID ..."
-    #         for i in {1..60}; do
-    #         CNT=$(aws ssm describe-instance-information \
-    #             --query "InstanceInformationList[?InstanceId=='$IID'] | length(@)" \
-    #             --output text || echo 0)
-    #         if [ "$CNT" = "1" ]; then
-    #             echo "Instance registered with SSM."
-    #             exit 0
-    #         fi
-    #         echo "Not registered yet ($i/60); sleeping 5s..."
-    #         sleep 5
-    #         done
-    #         echo "SSM registration timeout." >&2
-    #         exit 1
 
       # Read instance ID & public DNS from Terraform outputs
       - name: Read Terraform outputs
@@ -111,14 +93,6 @@ jobs:
           echo "INSTANCE_ID=$(terraform output -raw instance_id)" >> $GITHUB_OUTPUT
           echo "PUBLIC_DNS=$(terraform output -raw public_dns)" >> $GITHUB_OUTPUT
 
-    #   - name: Trigger deploy via SSM
-    #     run: |
-    #         aws ssm send-command \
-    #             --instance-ids "${{ steps.tf_out.outputs.INSTANCE_ID }}" \
-    #             --document-name "AWS-RunShellScript" \
-    #             --comment "DDemo deploy" \
-    #             --parameters commands=["/usr/local/bin/deploy.sh s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_KEY }}"] \
-    #             --output text
       # Trigger deploy script on the instance via SSM Run Command
       - name: Trigger deploy via SSM
         run: |
@@ -126,7 +100,7 @@ jobs:
             --instance-ids "${{ steps.tf.outputs.INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --comment "DDemo deploy" \
-            --parameters commands=["/usr/local/bin/deploy.sh s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_KEY }}"] \
+            --parameters commands=["/usr/local/bin/deploy.sh s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_KEY }} && sudo systemctl restart urlshort.service"] \
             --output text
 
       # (Optional but nice) Wait for app to be healthy

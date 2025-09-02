@@ -3,13 +3,38 @@ import sqlite3
 import string
 import random
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+import json
 from urllib.parse import urljoin
 from flask import Flask, render_template, request, redirect, abort
 
 APP_DIR = Path(__file__).parent
 DB_PATH = APP_DIR / "urls.db"
 BUG_REDIRECT = True
+
+BUILD_INFO = APP_DIR / ".buildinfo.json"
+
+def read_buildinfo():
+    try:
+        with open(BUILD_INFO, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _fmt_mdt_from_utc_str(utc_str: str) -> str:
+    # utc_str like "2025-09-02T16:45:12Z"
+    dt_utc = datetime.strptime(utc_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    return dt_utc.astimezone(ZoneInfo("America/Denver")).strftime("%Y-%m-%d %I:%M:%S %p %Z")
+
+BUILD = read_buildinfo()
+GIT_SHA = BUILD.get("git_sha", "unknown")
+
+# Prefer pipeline-provided UTC → convert to MDT; fallback to "now" in MDT
+if "deployed_at_utc" in BUILD:
+    DEPLOYED_AT = _fmt_mdt_from_utc_str(BUILD["deployed_at_utc"])
+else:
+    DEPLOYED_AT = datetime.now(ZoneInfo("America/Denver")).strftime("%Y-%m-%d %I:%M:%S %p %Z")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "demo-secret")
@@ -65,9 +90,9 @@ def home():
         rows=rows,
         short_url=None,
         short_code=None,
-        short_href=None,   # added
+        short_href=None,
+        git_sha=GIT_SHA,
     )
-
 
 @app.post("/shorten")
 def shorten():
@@ -101,7 +126,8 @@ def shorten():
         rows=rows,
         short_url=short_url,
         short_code=code,
-        href=short_href,
+        short_href=short_href,
+        git_sha=GIT_SHA,
     )
 
 
