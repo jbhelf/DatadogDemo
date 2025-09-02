@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import json
 from urllib.parse import urljoin
-from flask import Flask, render_template, request, redirect, abort
+from flask import Flask, render_template, request, redirect, abort, url_for
 
 BUG_REDIRECT = False
 
@@ -43,12 +43,10 @@ app.secret_key = os.environ.get("FLASK_SECRET", "demo-secret")
 # shown on the page so each deploy looks different
 DEPLOYED_AT = os.environ.get("DEPLOYED_AT") or datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
-
 def db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
-
 
 def init_db():
     conn = db()
@@ -113,15 +111,15 @@ def shorten():
         except sqlite3.IntegrityError:
             continue
 
-    short_url = urljoin(request.host_url, code)
-    # short_url = url_for("go", code=code, _external=True)
+    # short_url = urljoin(request.host_url, code)
+    short_url  = url_for("go", code=code, _external=True)
     rows = conn.execute(
         "SELECT code, url FROM urls ORDER BY created_at DESC LIMIT 5"
     ).fetchall()
 
     #BUG
     base_url = request.host_url.rstrip('/')
-    short_href = "https://datadog.com" if BUG_REDIRECT else f"{base_url}/{code}"
+    short_href = "https://datadog.com" if BUG_REDIRECT else short_url
 
     return render_template(
         "index.html",
