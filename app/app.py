@@ -122,6 +122,7 @@ def shorten():
 
     return render_template(
         "index.html",
+        deployed_at=DEPLOYED_AT,
         rows=rows,
         short_url=short_url,
         short_code=code,
