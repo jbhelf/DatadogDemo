@@ -179,13 +179,37 @@ jobs:
         run: npm -g install @datadog/datadog-ci
 
       - name: Emit pipeline success metric
+        if: success()
+        env:
+          DD_SITE: ${{ secrets.DD_SITE }}
         run: |
-          # Example gauge = 1 for success
-          datadog-ci metric send \
-            --name ddemo.pipeline.status \
-            --type gauge \
-            --value 1 \
-            --tags workflow:${{ github.workflow }},job:deploy,sha:${{ github.sha }},branch:${{ github.ref_name }},service:${{ env.DD_SERVICE }},env:${{ env.DD_ENV }}
+          set -euo pipefail
+          TS=$(date +%s)
+          API_HOST=${DD_SITE/datadoghq.com/api.datadoghq.com}
+          API_HOST=${API_HOST/us3.datadoghq.com/api.us3.datadoghq.com}
+          API_HOST=${API_HOST/datadoghq.eu/api.datadoghq.eu}
+          curl -sS -X POST "https://${API_HOST}/api/v2/series" \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${{ secrets.DD_API_KEY }}" \
+            -d @- <<JSON
+          {
+            "series": [
+              {
+                "metric": "ddemo.pipeline.status",
+                "type": 3,
+                "points": [[${TS}, 1]],
+                "tags": [
+                  "workflow:${{ github.workflow }}",
+                  "job:${{ github.job }}",
+                  "sha:${{ github.sha }}",
+                  "branch:${{ github.ref_name }}",
+                  "service:ddemo-urlshort",
+                  "env:demo"
+                ]
+              }
+            ]
+          }
+          JSON
 
       - name: Emit pipeline duration metric (seconds)
         run: |
