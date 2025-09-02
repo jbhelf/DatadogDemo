@@ -41,7 +41,21 @@ jobs:
 
       - name: Run tests (pytest)
         run: |
-          pytest -q
+          mkdir -p reports
+          pytest -q --junitxml=reports/junit.xml
+
+      # FOR DATADOG STEP
+      - name: Upload JUnit to Datadog
+        if: always()
+        env:
+          DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
+          DATADOG_SITE: ${{ secrets.DD_SITE }}
+        run: |
+          npm -g install @datadog/datadog-ci
+          datadog-ci junit upload \
+            --service ddemo-urlshort \
+            --env demo \
+            reports/junit.xml
 
   build-and-deploy:
     needs: [lint-and-test] #Adding lint/test dependency
@@ -151,3 +165,41 @@ jobs:
 
       - name: Echo site URL
         run: echo "Site == http://${{ steps.tf.outputs.PUBLIC_DNS }}"
+
+  observe-with-datadog:
+    needs: [build-and-deploy]   # or whatever your deploy job id is
+    runs-on: ubuntu-latest
+    env:
+      DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
+      DATADOG_SITE: ${{ secrets.DD_SITE }}
+      DD_ENV: ${{ secrets.DD_ENV || 'demo' }}
+      DD_SERVICE: ${{ secrets.DD_SERVICE || 'ddemo-urlshort' }}
+    steps:
+      - name: Install datadog-ci
+        run: npm -g install @datadog/datadog-ci
+
+      - name: Emit pipeline success metric
+        run: |
+          # Example gauge = 1 for success
+          datadog-ci metric send \
+            --name ddemo.pipeline.status \
+            --type gauge \
+            --value 1 \
+            --tags workflow:${{ github.workflow }},job:deploy,sha:${{ github.sha }},branch:${{ github.ref_name }},service:${{ env.DD_SERVICE }},env:${{ env.DD_ENV }}
+
+      - name: Emit pipeline duration metric (seconds)
+        run: |
+          # If you saved a start time earlier, great. If not, just time the deploy step next run.
+          # For now, send a placeholder that you can replace with your measured value.
+          datadog-ci metric send \
+            --name ddemo.pipeline.deploy_duration_s \
+            --type gauge \
+            --value 0 \
+            --tags workflow:${{ github.workflow }},job:deploy,sha:${{ github.sha }},branch:${{ github.ref_name }},service:${{ env.DD_SERVICE }},env:${{ env.DD_ENV }}
+
+      - name: Create Datadog event
+        run: |
+          datadog-ci event create \
+            --title "Deploy succeeded" \
+            --text "Workflow ${{ github.workflow }} run #${{ github.run_number }} deployed ${{ github.sha }}" \
+            --tags workflow:${{ github.workflow }},branch:${{ github.ref_name }},service:${{ env.DD_SERVICE }},env:${{ env.DD_ENV }}

@@ -180,6 +180,7 @@ resource "aws_instance" "web" {
     # Install dependencies
     source ${local.app_dir}/venv/bin/activate
     pip install -r app/requirements.txt --quiet
+    pip install ddtrace --quiet
 
     # Create/Update systemd service to serve Flask on :80
     cat >/etc/systemd/system/urlshort.service <<SERVICE
@@ -190,7 +191,9 @@ resource "aws_instance" "web" {
     [Service]
     WorkingDirectory=${local.app_dir}
     Environment="DEPLOYED_AT=$(date +"%Y-%m-%d %I:%M:%S %p %Z")"
-    ExecStart=${local.app_dir}/venv/bin/python -m flask --app app/app.py run --host 0.0.0.0 --port 80
+    Environment=DD_SERVICE=ddemo-urlshort
+    Environment=DD_ENV=demo
+    ExecStart=${local.app_dir}/venv/bin/ddtrace-run ${local.app_dir}/venv/bin/python -m flask --app app/app.py run --host 0.0.0.0 --port 80
     Restart=on-failure
     User=root
 
@@ -205,6 +208,33 @@ resource "aws_instance" "web" {
 
     # Ensure SSM agent is running (AL2023 has it by default)
     systemctl enable --now amazon-ssm-agent
+
+    set -e
+
+    DD_API_KEY="$(aws ssm get-parameter --with-decryption --name /ddemo/datadog/api_key --query 'Parameter.Value' --output text)"
+    DD_SITE="datadoghq.com"   # or your site, e.g. us3.datadoghq.com
+    DD_ENV="demo"
+    DD_SERVICE="ddemo-urlshort"
+
+    # Install Datadog agent
+    DD_AGENT_MAJOR_VERSION=7 DD_API_KEY="$DD_API_KEY" DD_SITE="$DD_SITE" \
+      bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script.sh)"
+
+    # Basic host tags
+    sudo sh -c "printf '\n-tags: [env:%s,service:%s]\n' \"$DD_ENV\" \"$DD_SERVICE\" >> /etc/datadog-agent/datadog.yaml"
+
+    # Enable logs
+    sudo sed -i 's/# logs_enabled: false/logs_enabled: true/' /etc/datadog-agent/datadog.yaml
+    # Collect app logs (adjust paths to your app)
+    sudo tee /etc/datadog-agent/conf.d/flask.d/conf.yaml > /dev/null <<'YAML'
+    logs:
+      - type: file
+        path: /opt/urlshort/app/urlshort.log
+        service: ddemo-urlshort
+        source: python
+    YAML
+
+    sudo systemctl restart datadog-agent
   EOF
 
   tags = {
