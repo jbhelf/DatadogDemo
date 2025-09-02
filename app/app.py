@@ -9,9 +9,10 @@ import json
 from urllib.parse import urljoin
 from flask import Flask, render_template, request, redirect, abort
 
+BUG_REDIRECT = False
+
 APP_DIR = Path(__file__).parent
 DB_PATH = APP_DIR / "urls.db"
-BUG_REDIRECT = True
 
 BUILD_INFO = APP_DIR / ".buildinfo.json"
 
