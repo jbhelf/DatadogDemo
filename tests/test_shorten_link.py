@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from app.app import app as flask_app, BUG_REDIRECT
+from app.app import app as flask_app
 
 
 def test_anchor_href_matches_display():
