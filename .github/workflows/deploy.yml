@@ -36,6 +36,9 @@ jobs:
         run: |
           flake8 .
 
+      - name: Ensure repo on PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$GITHUB_WORKSPACE" >> $GITHUB_ENV
+
       - name: Run tests (pytest)
         run: |
           pytest -q
