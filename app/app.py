@@ -9,7 +9,7 @@ import json
 from urllib.parse import urljoin
 from flask import Flask, render_template, request, redirect, abort
 
-BUG_REDIRECT = False
+BUG_REDIRECT = True
 
 APP_DIR = Path(__file__).parent
 DB_PATH = APP_DIR / "urls.db"
@@ -117,7 +117,6 @@ def shorten():
     ).fetchall()
 
     #BUG
-    base_url = request.host_url.rstrip('/')
     short_href = "https://datadog.com" if BUG_REDIRECT else short_url
 
     return render_template(
