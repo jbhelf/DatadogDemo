@@ -84,24 +84,24 @@ jobs:
         run: |
             aws ec2 wait instance-status-ok --instance-ids "${{ steps.tf_out.outputs.INSTANCE_ID }}"
     
-      - name: Wait for SSM registration
-        run: |
-            set -euo pipefail
-            IID="${{ steps.tf_out.outputs.INSTANCE_ID }}"
-            echo "Waiting for SSM to see $IID ..."
-            for i in {1..60}; do
-            CNT=$(aws ssm describe-instance-information \
-                --query "InstanceInformationList[?InstanceId=='$IID'] | length(@)" \
-                --output text || echo 0)
-            if [ "$CNT" = "1" ]; then
-                echo "Instance registered with SSM."
-                exit 0
-            fi
-            echo "Not registered yet ($i/60); sleeping 5s..."
-            sleep 5
-            done
-            echo "SSM registration timeout." >&2
-            exit 1
+    #   - name: Wait for SSM registration
+    #     run: |
+    #         set -euo pipefail
+    #         IID="${{ steps.tf_out.outputs.INSTANCE_ID }}"
+    #         echo "Waiting for SSM to see $IID ..."
+    #         for i in {1..60}; do
+    #         CNT=$(aws ssm describe-instance-information \
+    #             --query "InstanceInformationList[?InstanceId=='$IID'] | length(@)" \
+    #             --output text || echo 0)
+    #         if [ "$CNT" = "1" ]; then
+    #             echo "Instance registered with SSM."
+    #             exit 0
+    #         fi
+    #         echo "Not registered yet ($i/60); sleeping 5s..."
+    #         sleep 5
+    #         done
+    #         echo "SSM registration timeout." >&2
+    #         exit 1
 
       # Read instance ID & public DNS from Terraform outputs
       - name: Read Terraform outputs
@@ -111,23 +111,23 @@ jobs:
           echo "INSTANCE_ID=$(terraform output -raw instance_id)" >> $GITHUB_OUTPUT
           echo "PUBLIC_DNS=$(terraform output -raw public_dns)" >> $GITHUB_OUTPUT
 
-      - name: Trigger deploy via SSM
-        run: |
-            aws ssm send-command \
-                --instance-ids "${{ steps.tf_out.outputs.INSTANCE_ID }}" \
-                --document-name "AWS-RunShellScript" \
-                --comment "DDemo deploy" \
-                --parameters commands=["/usr/local/bin/deploy.sh s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_KEY }}"] \
-                --output text
-    #   # Trigger deploy script on the instance via SSM Run Command
     #   - name: Trigger deploy via SSM
     #     run: |
-    #       aws ssm send-command \
-    #         --instance-ids "${{ steps.tf.outputs.INSTANCE_ID }}" \
-    #         --document-name "AWS-RunShellScript" \
-    #         --comment "DDemo deploy" \
-    #         --parameters commands=["/usr/local/bin/deploy.sh s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_KEY }}"] \
-    #         --output text
+    #         aws ssm send-command \
+    #             --instance-ids "${{ steps.tf_out.outputs.INSTANCE_ID }}" \
+    #             --document-name "AWS-RunShellScript" \
+    #             --comment "DDemo deploy" \
+    #             --parameters commands=["/usr/local/bin/deploy.sh s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_KEY }}"] \
+    #             --output text
+      # Trigger deploy script on the instance via SSM Run Command
+      - name: Trigger deploy via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids "${{ steps.tf.outputs.INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "DDemo deploy" \
+            --parameters commands=["/usr/local/bin/deploy.sh s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_KEY }}"] \
+            --output text
 
       # (Optional but nice) Wait for app to be healthy
       - name: Wait for /healthz
