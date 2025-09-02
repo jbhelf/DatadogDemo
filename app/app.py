@@ -59,7 +59,7 @@ def home():
     rows = db().execute(
         "SELECT code, url FROM urls ORDER BY created_at DESC LIMIT 5"
     ).fetchall()
-    return render_template("index.html", deployed_at=DEPLOYED_AT, rows=rows, short_url=None)
+    return render_template("index.html", deployed_at=DEPLOYED_AT, rows=rows, short_url=None, short_code=None)
 
 
 @app.post("/shorten")
@@ -85,7 +85,7 @@ def shorten():
     rows = conn.execute(
         "SELECT code, url FROM urls ORDER BY created_at DESC LIMIT 5"
     ).fetchall()
-    return render_template("index.html", deployed_at=DEPLOYED_AT, rows=rows, short_url=short_url)
+    return render_template("index.html", deployed_at=DEPLOYED_AT, rows=rows, short_url=short_url, short_code=code)
 
 
 @app.get("/<code>")
