@@ -122,7 +122,6 @@ def shorten():
 
     return render_template(
         "index.html",
-        deployed_at=DEPLOYED_AT,
         rows=rows,
         short_url=short_url,
         short_code=code,
@@ -130,13 +129,6 @@ def shorten():
         git_sha=GIT_SHA,
     )
 
-
-# @app.get("/<code>")
-# def go(code):
-#     row = db().execute("SELECT url FROM urls WHERE code = ?", (code,)).fetchone()
-#     if not row:
-#         abort(404)
-#     return redirect(row["url"], code=302)
 @app.get("/<code>")
 def go(code):
     if BUG_REDIRECT:
