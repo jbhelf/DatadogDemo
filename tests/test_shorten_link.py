@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-import app.app as web  # your Flask app module is app/app.py
+import app as web
 
 
 def test_anchor_href_matches_display(monkeypatch):
