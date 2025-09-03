@@ -48,7 +48,7 @@ jobs:
 
       - name: Jitter for scheduled runs
         if: github.event_name == 'schedule'
-        run: sleep $((RANDOM % 1800))  # up to 30 min jitter
+        run: sleep $((RANDOM % 180))
 
       # FOR DATADOG STEP
       - name: Upload JUnit to Datadog
