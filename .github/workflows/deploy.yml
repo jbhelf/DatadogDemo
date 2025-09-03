@@ -64,7 +64,7 @@ jobs:
             reports/junit.xml
 
   build-and-deploy:
-    if: github.event.name != 'schedule'
+    if: github.event_name != 'schedule'
     needs: [lint-and-test] #Adding lint/test dependency
     runs-on: ubuntu-latest
 
