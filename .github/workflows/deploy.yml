@@ -5,7 +5,7 @@ on:
     branches: [ main ]
   workflow_dispatch:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/5 * * * *"
 
 permissions:
   id-token: write         # REQUIRED for GitHub OIDC -> AWS
@@ -23,7 +23,7 @@ jobs:
     steps:
     - name: Jitter for scheduled runs
       if: github.event_name == 'schedule'
-      run: sleep $((RANDOM % 180))
+      run: sleep $((RANDOM % 120))
 
   lint-and-test:
     name: Lint & Test (py${{ matrix.python-version }})
