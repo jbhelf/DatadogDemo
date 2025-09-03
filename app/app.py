@@ -9,7 +9,7 @@ import json
 from urllib.parse import urljoin
 from flask import Flask, render_template, request, redirect, abort
 
-BUG_REDIRECT = False  # True=buggy
+BUG_REDIRECT = True  #True=buggy <- Don't forget - both errors in this line!
 
 APP_DIR = Path(__file__).parent
 DB_PATH = APP_DIR / "urls.db"
