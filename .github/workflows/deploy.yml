@@ -25,58 +25,58 @@ jobs:
   #     if: github.event_name == 'schedule'
   #     run: sleep $((RANDOM % 180))
 
-  # lint-and-test:
-  #   name: Lint & Test (py${{ matrix.python-version }})
-  #   runs-on: ubuntu-latest
-  #   #=== Matrixed ===
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       python-version: [ '3.11' ] #[ "3.9", "3.10", "3.11" ]
+  lint-and-test:
+    name: Lint & Test (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    #=== Matrixed ===
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ '3.11' ] #[ "3.9", "3.10", "3.11" ]
 
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-  #     - name: Install app + dev deps
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install -r app/requirements.txt
-  #         pip install -r requirements-dev.txt
+      - name: Install app + dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+          pip install -r requirements-dev.txt
 
-  #     - name: Ensure repo on PYTHONPATH
-  #       run: echo "PYTHONPATH=$PYTHONPATH:$GITHUB_WORKSPACE" >> $GITHUB_ENV
+      - name: Ensure repo on PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-  #     - name: Run tests (pytest)
-  #       run: |
-  #         mkdir -p reports
-  #         pytest -q --junitxml=reports/junit.xml
+      - name: Run tests (pytest)
+        run: |
+          mkdir -p reports
+          pytest -q --junitxml=reports/junit.xml
 
-  #     - name: Lint (flake8)
-  #       run: |
-  #         flake8 .
+      - name: Lint (flake8)
+        run: |
+          flake8 .
 
-  #     # FOR DATADOG STEP
-  #     - name: Upload JUnit to Datadog
-  #       if: always()
-  #       env:
-  #         DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
-  #         DATADOG_SITE: ${{ secrets.DD_SITE }}
-  #       run: |
-  #         npm -g install @datadog/datadog-ci
-  #         datadog-ci junit upload \
-  #           --service ddemo-urlshort \
-  #           --env demo \
-  #           reports/junit.xml
+      # FOR DATADOG STEP
+      - name: Upload JUnit to Datadog
+        if: always()
+        env:
+          DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
+          DATADOG_SITE: ${{ secrets.DD_SITE }}
+        run: |
+          npm -g install @datadog/datadog-ci
+          datadog-ci junit upload \
+            --service ddemo-urlshort \
+            --env demo \
+            reports/junit.xml
 
   build-and-deploy:
     if: github.event_name != 'schedule'
-    # needs: [lint-and-test] #Adding lint/test dependency
+    needs: [lint-and-test] #Adding lint/test dependency
     runs-on: ubuntu-latest
 
     steps:
