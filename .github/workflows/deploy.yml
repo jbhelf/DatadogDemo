@@ -4,6 +4,8 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
 
 permissions:
   id-token: write         # REQUIRED for GitHub OIDC -> AWS
@@ -44,6 +46,10 @@ jobs:
           mkdir -p reports
           pytest -q --junitxml=reports/junit.xml
 
+      - name: Jitter for scheduled runs
+        if: github.event_name == 'schedule'
+        run: sleep $((RANDOM % 1800))  # up to 30 min jitter
+
       # FOR DATADOG STEP
       - name: Upload JUnit to Datadog
         if: always()
@@ -58,6 +64,7 @@ jobs:
             reports/junit.xml
 
   build-and-deploy:
+    if: github.event.name != 'schedule'
     needs: [lint-and-test] #Adding lint/test dependency
     runs-on: ubuntu-latest
 
