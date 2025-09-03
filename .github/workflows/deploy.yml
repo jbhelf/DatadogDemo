@@ -61,19 +61,6 @@ jobs:
         run: |
           flake8 .
 
-      # # FOR DATADOG STEP
-      # - name: Upload JUnit to Datadog
-      #   if: always()
-      #   env:
-      #     DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
-      #     DATADOG_SITE: ${{ secrets.DD_SITE }}
-      #   run: |
-      #     npm -g install @datadog/datadog-ci
-      #     datadog-ci junit upload \
-      #       --service ddemo-urlshort \
-      #       --env demo \
-      #       reports/junit.xml
-
   build-and-deploy:
     if: github.event_name != 'schedule'
     needs: [lint-and-test] #Adding lint/test dependency
