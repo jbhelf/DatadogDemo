@@ -16,7 +16,6 @@ DB_PATH = APP_DIR / "urls.db"
 
 BUILD_INFO = APP_DIR / ".buildinfo.json"
 
-
 def read_buildinfo():
     try:
         with open(BUILD_INFO, "r", encoding="utf-8") as f:
