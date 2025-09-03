@@ -26,6 +26,7 @@ jobs:
       run: sleep $((RANDOM % 120))
 
   lint-and-test:
+    if: github.event_name != 'schedule'
     name: Lint & Test (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     #=== Matrixed ===
