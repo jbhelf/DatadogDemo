@@ -17,8 +17,23 @@ env:
   ARTIFACT_KEY: releases/current.zip
 
 jobs:
-  lint-and-test:
+  jitter_data_collection:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    steps:
+    - name: Jitter for scheduled runs
+      if: github.event_name == 'schedule'
+      run: sleep $((RANDOM % 180))
+
+  lint-and-test:
+    name: Lint & Test (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    #=== Matrixed ===
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.9", "3.10", "3.11" ]
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +41,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install app + dev deps
         run: |
@@ -45,10 +60,6 @@ jobs:
       - name: Lint (flake8)
         run: |
           flake8 .
-
-      - name: Jitter for scheduled runs
-        if: github.event_name == 'schedule'
-        run: sleep $((RANDOM % 180))
 
       # FOR DATADOG STEP
       - name: Upload JUnit to Datadog
