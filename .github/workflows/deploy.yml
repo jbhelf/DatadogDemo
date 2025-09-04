@@ -25,46 +25,46 @@ jobs:
   #     if: github.event_name == 'schedule'
   #     run: sleep $((RANDOM % 120))
 
-  # lint-and-test:
-  #   if: github.event_name != 'schedule'
-  #   name: Lint & Test (py${{ matrix.python-version }} on ${{ matrix.os }})
-  #   runs-on: ${{ matrix.os }}
-  #   #=== Matrixed ===
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       # python-version: [ "3.9", "3.10", "3.11" ]
-  #       # os: [ ubuntu-latest, macos-latest, windows-latest ] #Mixed success - Will fail with python path
-  #       # os: [ ubuntu-latest, macos-latest ] #Matrixed success
-  #       python-version: [ '3.11' ]
-  #       os: [ ubuntu-latest ]
+  lint-and-test:
+    if: github.event_name != 'schedule'
+    name: Lint & Test (py${{ matrix.python-version }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    #=== Matrixed ===
+    strategy:
+      fail-fast: false
+      matrix:
+        # python-version: [ "3.9", "3.10", "3.11" ]
+        # os: [ ubuntu-latest, macos-latest, windows-latest ] #Mixed success - Will fail with python path
+        # os: [ ubuntu-latest, macos-latest ] #Matrixed success
+        python-version: [ '3.11' ]
+        os: [ ubuntu-latest ]
 
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-  #     - name: Install app + dev deps
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install -r app/requirements.txt
-  #         pip install -r requirements-dev.txt
+      - name: Install app + dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+          pip install -r requirements-dev.txt
 
-  #     - name: Ensure repo on PYTHONPATH
-  #       run: echo "PYTHONPATH=$PYTHONPATH:$GITHUB_WORKSPACE" >> $GITHUB_ENV
+      - name: Ensure repo on PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-  #     - name: Run tests (pytest)
-  #       run: |
-  #         mkdir -p reports
-  #         pytest -q --junitxml=reports/junit.xml
+      - name: Run tests (pytest)
+        run: |
+          mkdir -p reports
+          pytest -q --junitxml=reports/junit.xml
 
-  #     - name: Lint (flake8)
-  #       run: |
-  #         flake8 .
+      - name: Lint (flake8)
+        run: |
+          flake8 .
 
   build-and-deploy:
     if: github.event_name != 'schedule'
