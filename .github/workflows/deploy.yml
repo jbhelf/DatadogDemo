@@ -4,8 +4,8 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
-  # schedule:
-  #   - cron: "*/5 * * * *"
+  schedule:
+    - cron: "*/5 * * * *"
 
 permissions:
   id-token: write         # REQUIRED for GitHub OIDC -> AWS
@@ -17,13 +17,13 @@ env:
   ARTIFACT_KEY: releases/current.zip
 
 jobs:
-  # jitter_data_collection:
-  #   if: github.event_name == 'schedule'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Jitter for scheduled runs
-  #     if: github.event_name == 'schedule'
-  #     run: sleep $((RANDOM % 120))
+  jitter_data_collection:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Jitter for scheduled runs
+      if: github.event_name == 'schedule'
+      run: sleep $((RANDOM % 120))
 
   lint-and-test:
     if: github.event_name != 'schedule'
