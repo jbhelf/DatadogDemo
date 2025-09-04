@@ -4,8 +4,8 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
+  # schedule:
+  #   - cron: "*/5 * * * *"
 
 permissions:
   id-token: write         # REQUIRED for GitHub OIDC -> AWS
