@@ -17,13 +17,13 @@ env:
   ARTIFACT_KEY: releases/current.zip
 
 jobs:
-  # jitter_data_collection:
-  #   if: github.event_name == 'schedule'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Jitter for scheduled runs
-  #     if: github.event_name == 'schedule'
-  #     run: sleep $((RANDOM % 5))
+  jitter_data_collection:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Jitter for scheduled runs
+      if: github.event_name == 'schedule'
+      run: sleep $((RANDOM % 5))
 
   lint-and-test:
     if: github.event_name != 'schedule'
